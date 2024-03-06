@@ -1,10 +1,10 @@
 package com.naim.tetris;
 
-import com.naim.tetris.mino.Block;
-import com.naim.tetris.mino.Mino;
-import com.naim.tetris.mino.MinoL1;
+import com.naim.tetris.mino.*;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Random;
 
 public class PlayManager {
     final int WIDTH = 360;
@@ -19,7 +19,17 @@ public class PlayManager {
     final int MINO_START_X;
     final int MINO_START_Y;
 
+    Mino nextMino;
+    final int NEXTMINO_X;
+    final int NEXTMINO_Y;
+    public static ArrayList<Block> staticBlocks = new ArrayList<>();
+
     public static int dropInterval = 60;
+    boolean gameOver;
+
+    int level = 1;
+    int lines;
+    int score;
 
     public PlayManager(){
         left_x = (GamePanel.WIDTH/2) - (WIDTH/2);
@@ -30,13 +40,112 @@ public class PlayManager {
         MINO_START_X = left_x + (WIDTH/2) - Block.SIZE;
         MINO_START_Y = top_y + Block.SIZE;
 
+        NEXTMINO_X = right_x + 175;
+        NEXTMINO_Y = top_y + 500;
 
-        currentMino = new MinoL1();
+
+        currentMino = pickMino();
         currentMino.setXY(MINO_START_X, MINO_START_Y);
+        nextMino = pickMino();
+        nextMino.setXY(NEXTMINO_X, NEXTMINO_Y);
+    }
+
+    private Mino pickMino(){
+
+        Mino mino = null;
+        int i = new Random().nextInt(7);
+
+        switch(i){
+            case 0: mino = new MinoL1();break;
+            case 1: mino = new MinoL2();break;
+            case 2: mino = new MinoSquare();break;
+            case 3: mino = new MinoBar();break;
+            case 4: mino = new MinoT();break;
+            case 5: mino = new MinoZ1();break;
+            case 6: mino = new MinoZ2();break;
+        }
+        return mino;
     }
 
     public void update(){
-        currentMino.update();
+        if(currentMino.active == false){
+            staticBlocks.add(currentMino.block[0]);
+            staticBlocks.add(currentMino.block[1]);
+            staticBlocks.add(currentMino.block[2]);
+            staticBlocks.add(currentMino.block[3]);
+
+            if(currentMino.block[0].x == MINO_START_X && currentMino.block[0].y == MINO_START_Y){
+                gameOver = true;
+            }
+
+            currentMino.deactivating = false;
+
+            currentMino = nextMino;
+            currentMino.setXY(MINO_START_X, MINO_START_Y);
+
+            nextMino = pickMino();
+            nextMino.setXY(NEXTMINO_X, NEXTMINO_Y);
+
+            checkDelete();
+        }else{
+            currentMino.update();
+        }
+    }
+
+    public void checkDelete(){
+        int x = left_x;
+        int y = top_y;
+        int blockCount = 0;
+        int lineCount = 0;
+
+        while(x < right_x && y < bottom_y){
+
+            for (int i = 0; i < staticBlocks.size(); i++){
+                if(staticBlocks.get(i).x == x && staticBlocks.get(i).y == y ){
+                    blockCount++;
+                }
+            }
+
+            x += Block.SIZE;
+
+            if(x == right_x){
+
+                if(blockCount == 12){
+                    for(int i = staticBlocks.size() - 1; i > -1; i--){
+                        if(staticBlocks.get(i).y == y){
+                            staticBlocks.remove(i);
+                        }
+                    }
+
+                    lineCount++;
+                    lines++;
+
+                    if(lines % 10 == 0 && dropInterval > 1){
+                        level++;
+                        if(dropInterval > 10){
+                            dropInterval -= 10;
+                        }else{
+                            dropInterval -= 1;
+                        }
+                    }
+
+                    for(int i = 0; i < staticBlocks.size(); i++){
+                        if(staticBlocks.get(i).y < y){
+                            staticBlocks.get(i).y += Block.SIZE;
+                        }
+                    }
+                }
+
+                blockCount = 0;
+                x = left_x;
+                y += Block.SIZE;
+            }
+        }
+
+        if(lineCount > 0){
+            int singleLineScore = 10 * level;
+            score += singleLineScore * lineCount;
+        }
     }
 
     public void draw(Graphics2D g2){
@@ -51,8 +160,43 @@ public class PlayManager {
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g2.drawString("NEXT", x + 60, y + 60);
 
+        g2.drawRect(x, top_y, 250, 300);
+        x += 40;
+        y = top_y + 90;
+        g2.drawString("LEVEL : " + level, x, y);
+        y += 70;
+        g2.drawString("LINES : " + lines, x, y);
+        y += 70;
+        g2.drawString("SCORE : " + score, x, y);
+
         if(currentMino != null){
             currentMino.draw(g2);
         }
+
+        nextMino.draw(g2);
+
+        for (int i = 0; i < staticBlocks.size(); i++){
+            staticBlocks.get(i).draw(g2);
+        }
+
+        g2.setColor(Color.yellow);
+        g2.setFont(g2.getFont().deriveFont(50f));
+
+        if(gameOver){
+            x = left_x + 25;
+            y = top_y + 320;
+            g2.drawString("GAME OVER", x, y);
+        }
+        if(KeyHandler.pausePressed){
+            x = left_x + 70;
+            y = top_y + 320;
+            g2.drawString("PAUSED", x, y);
+        }
+
+
+        x = 75;
+        g2.setColor(Color.white);
+        g2.setFont(new Font("Times New Roman", Font.BOLD, 60));
+        g2.drawString("Tetris", x, top_y + 50);
     }
 }

@@ -16,6 +16,10 @@ public class GamePanel extends JPanel implements Runnable {
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setBackground(Color.black);
         this.setLayout(null);
+
+        this.addKeyListener(new KeyHandler());
+        this.setFocusable(true);
+
         playManager = new PlayManager();
     }
 
@@ -47,7 +51,9 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void update(){
-        playManager.update();
+        if(KeyHandler.pausePressed == false && playManager.gameOver == false){
+            playManager.update();
+        }
     }
 
     public void paintComponent(Graphics g){
